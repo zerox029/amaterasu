@@ -1,0 +1,6 @@
+[submodule "SCNE"]
+	path = SCNE
+	url = https://github.com/kdrl/SCNE
+[submodule "wikiextractor"]
+	path = wikiextractor
+	url = https://github.com/attardi/wikiextractor
