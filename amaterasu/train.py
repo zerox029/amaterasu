@@ -1,4 +1,7 @@
 ﻿import configparser
+import logging
+from pathlib import Path
+
 import math
 import time
 
@@ -9,6 +12,7 @@ from amaterasu.metrics import categorical_accuracy
 from amaterasu.model import setup_model, Amaterasu
 from amaterasu.preprocessing import preprocess_data
 
+logger = logging.getLogger(__name__)
 
 def read_config() -> Config:
     config = configparser.ConfigParser()
@@ -124,6 +128,10 @@ def reset_model(model: Amaterasu):
             layer.reset_parameters()
 
 def begin_training():
+    Path('data/logs').mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(filename='data/logs/trainlogs_20241107.log', level=logging.INFO)
+
+
     config = read_config()
 
     corpora, ngram_embeddings, (train_loader, validate_loader, test_loader) = preprocess_data(config)
@@ -138,6 +146,7 @@ def begin_training():
     train_accuracy_values = []
     validation_accuracy_values = []
     for epoch in range(config.epochs):
+        logger.info("Starting epoch {}".format(epoch + 1))
         start_time = time.time()
 
         train_loss, train_accuracy = train(model,
