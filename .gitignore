@@ -1,3 +1,7 @@
+# Embeddings file
+WNE.6G.200d
+data/tmp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
