@@ -14,10 +14,8 @@ import re
 from decimal import Decimal
 from pathlib import Path
 
-from aliases import Corpus, CharacterType, NGramEmbeddings
+from aliases import Corpus, CharacterType, NGramEmbeddings, Config
 
-_SEED: int = 42
-_SET_SEED: bool = True
 PAD_TOKEN: str = "<pad>"
 
 class NGram:
@@ -97,40 +95,40 @@ def _setup_corpus(raw_corpus) -> Corpus:
 def load_ngram_embeddings(embeddings_path: str) -> NGramEmbeddings:
     """Loads ngram embeddings from the given embeddings file and returns them in a dict."""
 
-    # TODO: Don't reload the vectors if they were previously loaded
+    tmp_dir = "data/tmp"
 
-    tmp_dir = "../data/tmp"
-    Path(tmp_dir).mkdir(parents=True, exist_ok=True)
+    if (not Path(f'{tmp_dir}/200D.dat').is_dir()) or (not Path(f'{tmp_dir}/200D.pkl').is_file()) or (not Path(f'{tmp_dir}/200D_idx.pkl').is_file()):
+        Path(tmp_dir).mkdir(parents=True, exist_ok=True)
 
-    ngrams: list[str] = []
-    idx: int = 0
-    ngram2idx: dict[str, int] = {}
-    vectors: carray = bcolz.carray(np.zeros(1), rootdir=f'{tmp_dir}/200D.dat', mode='w')
+        ngrams: list[str] = []
+        idx: int = 0
+        ngram2idx: dict[str, int] = {}
+        vectors: carray = bcolz.carray(np.zeros(1), rootdir=f'{tmp_dir}/200D.dat', mode='w')
 
-    with open(embeddings_path, 'rb') as f:
-        next(f)  # Skip the matrix size indicator
-        for l in f:
-            line: list[str] = l.decode().split()
+        with open(embeddings_path, 'rb') as f:
+            next(f)  # Skip the matrix size indicator
+            for l in f:
+                line: list[str] = l.decode().split()
 
-            if idx >= 2000:
-                break
+                if idx >= 2000:
+                    break
 
-            # This might not be necessary, but the embeddings file contained malformed lines at some point
-            if len(line) != 200 + 1:
-                continue
+                # This might not be necessary, but the embeddings file contained malformed lines at some point
+                if len(line) != 200 + 1:
+                    continue
 
-            word: str = line[0]
-            ngrams.append(word)
-            ngram2idx[word] = idx
+                word: str = line[0]
+                ngrams.append(word)
+                ngram2idx[word] = idx
 
-            idx += 1
-            vect: ndarray = np.array(line[1:], dtype=float)
-            vectors.append(vect)
+                idx += 1
+                vect: ndarray = np.array(line[1:], dtype=float)
+                vectors.append(vect)
 
-    vectors: carray = bcolz.carray(vectors[1:].reshape((2000, 200)), rootdir=f'{tmp_dir}/200D.dat', mode='w')
-    vectors.flush()
-    pickle.dump(ngrams, open(f'{tmp_dir}/200D.pkl', 'wb'))
-    pickle.dump(ngram2idx, open(f'{tmp_dir}/200D_idx.pkl', 'wb'))
+        vectors: carray = bcolz.carray(vectors[1:].reshape((2000, 200)), rootdir=f'{tmp_dir}/200D.dat', mode='w')
+        vectors.flush()
+        pickle.dump(ngrams, open(f'{tmp_dir}/200D.pkl', 'wb'))
+        pickle.dump(ngram2idx, open(f'{tmp_dir}/200D_idx.pkl', 'wb'))
 
     vectors: ndarray = bcolz.open(f'{tmp_dir}/200D.dat')[:]
     ngrams = pickle.load(open(f'{tmp_dir}/200D.pkl', 'rb'))
@@ -156,7 +154,7 @@ def get_character_type(char: str) -> CharacterType:
         return CharacterType.OTHER
 
 
-def create_loaders(device, batch_size) -> tuple[DataLoader, DataLoader, DataLoader]:
+def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbeddings) -> tuple[DataLoader, DataLoader, DataLoader]:
     def collate_fn(batch):
         max_sentence_length = max([len(sentence['characters']) for sentence in batch])
         padded_characters = []
@@ -167,25 +165,25 @@ def create_loaders(device, batch_size) -> tuple[DataLoader, DataLoader, DataLoad
             labels = sentence['labels']
 
             padded_sentence = characters + [PAD_TOKEN] * (max_sentence_length - len(characters))
-            padded_character_vectors = generate_character_vectors(padded_sentence)
+            padded_character_vectors = generate_character_vectors(padded_sentence, config.window_size, ngram_embeddings)
 
             character_vector_embeddings = []
             for character_vector in padded_character_vectors:
-                character_vector_embeddings.append(character_vector.get_embeddings())
+                character_vector_embeddings.append(character_vector.embedding)
 
             padded_characters.append(character_vector_embeddings)
 
             padded_sentence_labels = labels + [PAD_TOKEN] * (max_sentence_length - len(labels))
             padded_labels.append(generate_label_vectors(padded_sentence_labels))
 
-        return (torch.tensor(padded_characters, dtype=torch.float32).to(device),
-                torch.tensor(padded_labels, dtype=torch.float32).to(device))
+        return (torch.tensor(padded_characters, dtype=torch.float32).to(config.device),
+                torch.tensor(padded_labels, dtype=torch.float32).to(config.device))
 
-    train_data, valid_data, test_data = random_split(setup_corpora()[0], [0.8, 0.1, 0.1])
+    train_data, valid_data, test_data = random_split(corpus, [0.8, 0.1, 0.1])
 
-    train_loader = DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn, shuffle=True)
-    validate_loader = DataLoader(valid_data, batch_size=batch_size, collate_fn=collate_fn)
-    test_loader = DataLoader(test_data, batch_size=batch_size, collate_fn=collate_fn)
+    train_loader = DataLoader(train_data, batch_size=config.batch_size, collate_fn=collate_fn, shuffle=True)
+    validate_loader = DataLoader(valid_data, batch_size=config.batch_size, collate_fn=collate_fn)
+    test_loader = DataLoader(test_data, batch_size=config.batch_size, collate_fn=collate_fn)
 
     return train_loader, validate_loader, test_loader
 
@@ -223,19 +221,16 @@ def generate_label_vectors(labels) -> list[ndarray]:
     return label_vectors
 
 
-def preprocess() -> tuple[tuple[Corpus, Corpus], NGramEmbeddings, tuple[DataLoader, DataLoader, DataLoader]]:
-    if _SET_SEED:
-        random.seed(_SEED)
-        np.random.seed(_SEED)
-        torch.manual_seed(_SEED)
-        torch.cuda.manual_seed(_SEED)
+def preprocess_data(config: Config) -> tuple[tuple[Corpus, Corpus], NGramEmbeddings, tuple[DataLoader, DataLoader, DataLoader]]:
+    if config.set_seed:
+        random.seed(config.seed)
+        np.random.seed(config.seed)
+        torch.manual_seed(config.seed)
+        torch.cuda.manual_seed(config.seed)
         torch.backends.cudnn.deterministic = True
 
-    corpora = setup_corpora()
-    ngram_embeddings = load_ngram_embeddings("../embeddings/WNE.6G.200d")
-    loaders = create_loaders("cpu", 32)
+    knbc, jeita = setup_corpora()
+    ngram_embeddings = load_ngram_embeddings(config.embeddings_path)
+    loaders = create_loaders(knbc, config, ngram_embeddings)
 
-    return corpora, ngram_embeddings, loaders
-
-
-preprocess()
+    return (knbc, jeita), ngram_embeddings, loaders

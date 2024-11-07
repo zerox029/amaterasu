@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from amaterasu.aliases import Config
+
 
 class Amaterasu(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, n_layers, bidirectional, dropout_rate):
@@ -32,19 +34,9 @@ def compute_class_weights(device: torch.device):
 
     return class_weights
 
-def setup_model(hyperparameters: SectionProxy) -> tuple[Amaterasu, optim.AdamW, nn.CrossEntropyLoss]:
-    embedding_dim = hyperparameters.getint('EmbeddingDim')
-    window_size = hyperparameters.getint('WindowSize')
-    input_dim = embedding_dim * window_size + 6 * window_size
-    hidden_dim = hyperparameters.getint('HiddenDim')
-    n_layers = hyperparameters.getint('NLayers')
-    bidirectional = hyperparameters.getboolean('Bidirectional')
-    dropout_rate = hyperparameters.getfloat('DropoutRate')
-    learning_rate = hyperparameters.getfloat('LearningRate')
-    device = torch.device('cuda') if torch.cuda and torch.cuda.is_available() else torch.device('cpu')
-
-    model = Amaterasu(input_dim, hidden_dim, hidden_dim, n_layers, bidirectional, dropout_rate).to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss(weight=compute_class_weights(device)).to(device)
+def setup_model(config: Config) -> tuple[Amaterasu, optim.AdamW, nn.CrossEntropyLoss]:
+    model = Amaterasu(config.input_dim, config.hidden_dim, config.output_dim, config.layers, config.bidirectional, config.dropout).to(config.device)
+    optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
+    criterion = nn.CrossEntropyLoss(weight=compute_class_weights(config.device)).to(config.device)
 
     return model, optimizer, criterion
