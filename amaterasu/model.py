@@ -54,7 +54,8 @@ def compute_class_weights(device: torch.device, corpus: Corpus):
 def setup_model(config: Config, corpus: Corpus) -> tuple[Amaterasu, optim.AdamW, nn.CrossEntropyLoss]:
     model = Amaterasu(config.input_dim, config.hidden_dim, config.output_dim, config.layers, config.bidirectional,
                       config.dropout).to(config.device)
-    optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
-    criterion = nn.CrossEntropyLoss(weight=compute_class_weights(config.device, corpus)).to(config.device)
+    #optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
+    optimizer = optim.Adagrad(model.parameters(), lr=config.learning_rate)
+    criterion = nn.CrossEntropyLoss(weight=compute_class_weights(config.device, corpus), label_smoothing=0.05).to(config.device)
 
     return model, optimizer, criterion

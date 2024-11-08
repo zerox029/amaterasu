@@ -112,8 +112,8 @@ def load_ngram_embeddings(embeddings_path: str) -> NGramEmbeddings:
             next(f)  # Skip the matrix size indicator
             for l in f:
                 line: list[str] = l.decode().split()
-
-                if idx >= 2000:
+                
+                if idx == 100000:
                     break
 
                 # This might not be necessary, but the embeddings file contained malformed lines at some point
@@ -128,7 +128,7 @@ def load_ngram_embeddings(embeddings_path: str) -> NGramEmbeddings:
                 vect: ndarray = np.array(line[1:], dtype=float)
                 vectors.append(vect)
 
-        vectors: carray = bcolz.carray(vectors[1:].reshape((2000, 200)), rootdir=f'{tmp_dir}/200D.dat', mode='w')
+        vectors: carray = bcolz.carray(vectors[1:].reshape((100000, 200)), rootdir=f'{tmp_dir}/200D.dat', mode='w')
         vectors.flush()
         pickle.dump(ngrams, open(f'{tmp_dir}/200D.pkl', 'wb'))
         pickle.dump(ngram2idx, open(f'{tmp_dir}/200D_idx.pkl', 'wb'))
@@ -164,7 +164,7 @@ def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbedd
         batch_labels = torch.zeros(size=(len(batch), max_sentence_length, config.output_dim)).to(config.device)
         start_time = time.time()
 
-        pad_embedding = torch.zeros(config.embedding_dim).to(config.device)
+        pad_embedding = np.zeros(config.embedding_dim)
         label_list = [PAD_TOKEN, 'S', 'B', 'E', 'I']
 
         for sentence_id, sentence in enumerate(batch):
@@ -184,9 +184,9 @@ def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbedd
 
                 label = labels[character_id] if len(labels) > character_id else PAD_TOKEN
 
-                unigram_embedding = torch.tensor(ngram_embeddings.get(character_1, pad_embedding.clone().detach())).to(config.device)
-                bigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2, pad_embedding.clone().detach())).to(config.device)
-                trigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2 + character_3, pad_embedding.clone().detach())).to(config.device)
+                unigram_embedding = torch.tensor(ngram_embeddings.get(character_1, pad_embedding)).to(config.device)
+                bigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2, pad_embedding)).to(config.device)
+                trigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2 + character_3, pad_embedding)).to(config.device)
 
                 character_type_embeddings = torch.zeros(size=(config.window_size * len(CharacterType),))
                 character_type_embeddings[character_type_1.value + (len(CharacterType) * 0)] = 1
