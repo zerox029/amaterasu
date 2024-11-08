@@ -135,7 +135,7 @@ def begin_training():
     config = read_config()
 
     corpora, ngram_embeddings, (train_loader, validate_loader, test_loader) = preprocess_data(config)
-    model, optimizer, criterion = setup_model(config)
+    model, optimizer, criterion = setup_model(config, corpora[0])
 
     reset_model(model)
 

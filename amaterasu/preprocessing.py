@@ -1,6 +1,7 @@
 ﻿import time
 
 import torch
+from torch.nn.functional import batch_norm
 from torch.utils.data import random_split, DataLoader
 
 import bcolz
@@ -61,12 +62,12 @@ def setup_corpora() -> tuple[Corpus, Corpus]:
     """
 
     nltk.download('knbc')
-    nltk.download('jeita')
+    #nltk.download('jeita')
 
     knbc = nltk.corpus.knbc.sents()
-    jeita = nltk.corpus.jeita.sents()
+    #jeita = nltk.corpus.jeita.sents()
 
-    return _setup_corpus(knbc), _setup_corpus(jeita)
+    return _setup_corpus(knbc), _setup_corpus(knbc)
 
 
 def _setup_corpus(raw_corpus) -> Corpus:
@@ -157,43 +158,52 @@ def get_character_type(char: str) -> CharacterType:
 
 
 def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbeddings) -> tuple[DataLoader, DataLoader, DataLoader]:
-    def _collate_fn(batch):
-        max_sentence_length = max([len(sentence['characters']) for sentence in batch])
-        padded_sentences = np.zeros(shape=(len(batch), max_sentence_length))
-        padded_labels = np.zeros(shape=(len(batch), max_sentence_length))
-
-
     def collate_fn(batch):
-        # TODO: This is way too slow, should be improved dramatically
         max_sentence_length = max([len(sentence['characters']) for sentence in batch])
-        padded_characters = np.zeros(shape=(len(batch), max_sentence_length))
-        padded_labels = np.zeros(shape=(len(batch), max_sentence_length))
+        batch_inputs = torch.zeros(size=(len(batch), max_sentence_length, config.input_dim)).to(config.device)
+        batch_labels = torch.zeros(size=(len(batch), max_sentence_length, config.output_dim)).to(config.device)
         start_time = time.time()
 
-        for i, sentence in enumerate(batch):
+        pad_embedding = torch.zeros(config.embedding_dim).to(config.device)
+        label_list = [PAD_TOKEN, 'S', 'B', 'E', 'I']
+
+        for sentence_id, sentence in enumerate(batch):
             characters = sentence['characters']
             labels = sentence['labels']
 
-            padded_sentence = characters + [PAD_TOKEN] * (max_sentence_length - len(characters))
-            padded_character_vectors = generate_character_vectors(padded_sentence, config.window_size, ngram_embeddings)
+            for character_id in range(max_sentence_length):
+                ngram_characters = characters[character_id:character_id + config.window_size]
 
-            print(f"Generated padded: {time.time() - start_time}")
+                character_1 = ngram_characters[0] if len(ngram_characters) > 0 else PAD_TOKEN
+                character_2 = ngram_characters[1] if len(ngram_characters) > 1 else PAD_TOKEN
+                character_3 = ngram_characters[2] if len(ngram_characters) > 2 else PAD_TOKEN
 
-            character_vector_embeddings = np.zeros(len(padded_character_vectors))
-            for j, character_vector in enumerate(padded_character_vectors):
-                character_vector_embeddings[j] = character_vector.embedding
+                character_type_1 = get_character_type(character_1)
+                character_type_2 = get_character_type(character_2)
+                character_type_3 = get_character_type(character_3)
 
-            print(f"Generated embeddings: {time.time() - start_time}")
+                label = labels[character_id] if len(labels) > character_id else PAD_TOKEN
 
-            padded_characters[i] = character_vector_embeddings
+                unigram_embedding = torch.tensor(ngram_embeddings.get(character_1, pad_embedding.clone().detach())).to(config.device)
+                bigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2, pad_embedding.clone().detach())).to(config.device)
+                trigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2 + character_3, pad_embedding.clone().detach())).to(config.device)
 
-            padded_sentence_labels = labels + [PAD_TOKEN] * (max_sentence_length - len(labels))
-            padded_labels[i] = generate_label_vectors(padded_sentence_labels)
+                character_type_embeddings = torch.zeros(size=(config.window_size * len(CharacterType),))
+                character_type_embeddings[character_type_1.value + (len(CharacterType) * 0)] = 1
+                character_type_embeddings[character_type_2.value + (len(CharacterType) * 1)] = 1
+                character_type_embeddings[character_type_3.value + (len(CharacterType) * 1)] = 2
 
-            print(f"Done: {start_time}")
+                label_embedding = torch.zeros(config.output_dim)
+                label_embedding[label_list.index(label)] = 1
 
-        return (torch.tensor(np.array(padded_characters), dtype=torch.float32).to(config.device),
-                torch.tensor(padded_labels, dtype=torch.float32).to(config.device))
+                batch_inputs[sentence_id][character_id] = torch.cat((unigram_embedding.clone().detach(),
+                                                                     bigram_embedding.clone().detach(),
+                                                                     trigram_embedding.clone().detach(),
+                                                                     character_type_embeddings.clone().detach()), dim=0)
+                batch_labels[sentence_id][character_id] = label_embedding.clone().detach()
+
+        # print(f"collatefn took {(time.time() - start_time)}")
+        return batch_inputs, batch_labels
 
     train_data, valid_data, test_data = random_split(corpus, [0.8, 0.1, 0.1])
 
@@ -201,41 +211,8 @@ def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbedd
     validate_loader = DataLoader(valid_data, batch_size=config.batch_size, collate_fn=collate_fn)
     test_loader = DataLoader(test_data, batch_size=config.batch_size, collate_fn=collate_fn)
 
+
     return train_loader, validate_loader, test_loader
-
-
-def generate_character_vectors(sentence: list[str], window_size: int, ngram_embeddings) -> ndarray[CharacterVector]:
-    """Generates character vectors from a given sentence"""
-    vector_count: int = len(sentence)
-
-    character_vectors = np.zeros(shape=vector_count, dtype=CharacterVector)
-    for t in range(0, vector_count):
-        characters = sentence[t:t + window_size]
-
-        character_1 = characters[0] if len(characters) > 0 else PAD_TOKEN
-        character_2 = characters[1] if len(characters) > 1 else PAD_TOKEN
-        character_3 = characters[2] if len(characters) > 2 else PAD_TOKEN
-
-        unigram = NGram(1, [character_1], 200, ngram_embeddings)
-        bigram = NGram(2, [character_1, character_2], 200, ngram_embeddings)
-        trigram = NGram(3, [character_1, character_2, character_3], 200, ngram_embeddings)
-
-        character_vectors[t] = CharacterVector(unigram, bigram, trigram)
-
-    return character_vectors
-
-
-def generate_label_vectors(labels) -> ndarray:
-    label_vectors = np.zeros(len(labels))
-    label_list = [PAD_TOKEN, 'S', 'B', 'E', 'I']
-
-    for i, label in enumerate(labels):
-        label_vector = np.zeros(len(label_list))
-        label_vector[label_list.index(label)] = 1
-        label_vectors[i] = label_vector
-
-    return label_vectors
-
 
 def preprocess_data(config: Config) -> tuple[tuple[Corpus, Corpus], NGramEmbeddings, tuple[DataLoader, DataLoader, DataLoader]]:
     if config.set_seed:
