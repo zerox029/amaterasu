@@ -69,6 +69,8 @@ def train(model: Amaterasu, optimizer, criterion, loader, start_time, epoch, n_e
         epoch_loss += loss.item()
         epoch_accuracy += accuracy
 
+        logger.info(f"Epoch {epoch} - Minibatch {i + 1}: Loss {epoch_loss / (i + 1)} - Accuracy {epoch_accuracy / (i + 1)}")
+
     return epoch_loss / len(loader), epoch_accuracy / len(loader)
 
 def evaluate(model, criterion, loader, start_time, epoch, n_epochs, batch_length):
@@ -90,6 +92,8 @@ def evaluate(model, criterion, loader, start_time, epoch, n_epochs, batch_length
 
         epoch_loss += loss.item()
         epoch_accuracy += accuracy
+
+        logger.info(f"Epoch {epoch} - Minibatch {i + 1}: Loss {epoch_loss / (i + 1)} - Accuracy {epoch_accuracy / (i + 1)}")
 
     return epoch_loss / len(loader), epoch_accuracy / len(loader)
 
@@ -129,7 +133,7 @@ def reset_model(model: Amaterasu):
 
 def begin_training():
     Path('data/logs').mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename='data/logs/trainlogs_20241107.log', level=logging.INFO)
+    logging.basicConfig(filename='data/logs/trainlogs_20241108.log', level=logging.INFO)
 
 
     config = read_config()
