@@ -1,11 +1,10 @@
 ﻿from collections import defaultdict
-from configparser import SectionProxy
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from amaterasu.aliases import Config, Corpus
+from amaterasu.aliases import Config
 
 
 class Amaterasu(nn.Module):
@@ -32,7 +31,7 @@ class Amaterasu(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
-def compute_class_weights(device: torch.device, corpus: Corpus):
+def compute_class_weights(device: torch.device, corpus):
     label_counts = defaultdict(int)
 
     for sentence in corpus:
@@ -50,12 +49,19 @@ def compute_class_weights(device: torch.device, corpus: Corpus):
 
     return class_weights
 
+def count_parameters(model):
+  return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-def setup_model(config: Config, corpus: Corpus) -> tuple[Amaterasu, optim.AdamW, nn.CrossEntropyLoss]:
+
+
+
+def setup_model(config: Config, corpus) -> tuple[Amaterasu, optim.AdamW, nn.CrossEntropyLoss, optim.lr_scheduler.CosineAnnealingLR]:
     model = Amaterasu(config.input_dim, config.hidden_dim, config.output_dim, config.layers, config.bidirectional,
                       config.dropout).to(config.device)
-    #optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
-    optimizer = optim.Adagrad(model.parameters(), lr=config.learning_rate)
-    criterion = nn.CrossEntropyLoss(weight=compute_class_weights(config.device, corpus), label_smoothing=0.05).to(config.device)
+    optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
+    criterion = nn.CrossEntropyLoss(weight=compute_class_weights(config.device, corpus)).to(config.device)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=0.0001)
 
-    return model, optimizer, criterion
+    print(f'The model has {count_parameters(model):,} learnable parameters')
+
+    return model, optimizer, criterion, scheduler

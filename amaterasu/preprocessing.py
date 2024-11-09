@@ -18,17 +18,17 @@ import re
 from decimal import Decimal
 from pathlib import Path
 
-from aliases import Corpus, CharacterType, NGramEmbeddings, Config
+from aliases import CharacterType, Config
 
 PAD_TOKEN: str = "<pad>"
 
 class NGram:
-    def __init__(self, n: int, characters: list[str], dimensionality: int, embeddings: NGramEmbeddings):
+    def __init__(self, n: int, characters: list[str], dimensionality: int, embeddings):
         self.n: int = n
         self.characters: list[str] = characters
         self.embedding: ndarray = self._get_embedding(dimensionality, embeddings)
 
-    def _get_embedding(self, dimensionality: int, ngram_embeddings: NGramEmbeddings) -> ndarray:
+    def _get_embedding(self, dimensionality: int, ngram_embeddings) -> ndarray:
         ngram_str: str = ''.join(self.characters)
 
         ngram_embedding: ndarray = np.zeros(dimensionality)
@@ -57,24 +57,24 @@ class CharacterVector:
                                character_type_embeddings))
 
 
-def setup_corpora() -> tuple[Corpus, Corpus]:
+def setup_corpora():
     """
     Sets up KNBC and JEITA corpora to be used by the model
     """
 
-    #nltk.download('knbc')
-    nltk.download('jeita')
+    nltk.download('knbc')
+    # nltk.download('jeita')
 
-    #knbc = nltk.corpus.knbc.sents()
-    jeita = nltk.corpus.jeita.sents()
+    knbc = nltk.corpus.knbc.sents()
+    # jeita = nltk.corpus.jeita.sents()
 
-    return _setup_corpus(jeita), _setup_corpus(jeita)
+    return _setup_corpus(knbc), _setup_corpus(knbc)
 
 
-def _setup_corpus(raw_corpus) -> Corpus:
+def _setup_corpus(raw_corpus):
     """Sets up a single corpus to be used by the model"""
 
-    tagged_corpus: Corpus = []
+    tagged_corpus = []
 
     for sentence in raw_corpus:
         tagged_sentence: dict[str, list[str]] = {'characters': [], 'labels': []}
@@ -96,7 +96,7 @@ def _setup_corpus(raw_corpus) -> Corpus:
     return tagged_corpus
 
 
-def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int) -> NGramEmbeddings:
+def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int):
     """Loads ngram embeddings from the given embeddings file and returns them in a dict."""
 
     tmp_dir = "data/tmp"
@@ -117,6 +117,9 @@ def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int) -> NGr
                 if len(line) != embedding_dimension + 1:
                     continue
 
+                if idx % 10000 == 0:
+                    print(f"loaded embedding {idx}")
+
                 word: str = line[0]
                 ngrams.append(word)
                 ngram2idx[word] = idx
@@ -125,7 +128,7 @@ def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int) -> NGr
                 vect: ndarray = np.array(line[1:], dtype=float)
                 vectors.append(vect)
 
-        vectors: carray = bcolz.carray(vectors[1:].reshape((536645, embedding_dimension)), rootdir=f'{tmp_dir}/{embedding_dimension}D.dat', mode='w')
+        vectors: carray = bcolz.carray(vectors[1:].reshape((1775303, embedding_dimension)), rootdir=f'{tmp_dir}/{embedding_dimension}D.dat', mode='w')
         vectors.flush()
         pickle.dump(ngrams, open(f'{tmp_dir}/{embedding_dimension}D.pkl', 'wb'))
         pickle.dump(ngram2idx, open(f'{tmp_dir}/{embedding_dimension}D_idx.pkl', 'wb'))
@@ -154,7 +157,7 @@ def get_character_type(char: str) -> CharacterType:
         return CharacterType.OTHER
 
 
-def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbeddings) -> tuple[DataLoader, DataLoader, DataLoader]:
+def create_loaders(corpus, config: Config, ngram_embeddings) -> tuple[DataLoader, DataLoader, DataLoader]:
     def collate_fn(batch):
         max_sentence_length = max([len(sentence['characters']) for sentence in batch])
         batch_inputs = torch.zeros(size=(len(batch), max_sentence_length, config.input_dim)).to(config.device)
@@ -211,7 +214,7 @@ def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbedd
 
     return train_loader, validate_loader, test_loader
 
-def preprocess_data(config: Config) -> tuple[tuple[Corpus, Corpus], NGramEmbeddings, tuple[DataLoader, DataLoader, DataLoader]]:
+def preprocess_data(config):
     if config.set_seed:
         random.seed(config.seed)
         np.random.seed(config.seed)

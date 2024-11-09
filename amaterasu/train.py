@@ -37,14 +37,17 @@ def read_config() -> Config:
     n_epochs = hyperparameters_config.getint('NEpochs')
     batch_size = hyperparameters_config.getint('BatchSize')
 
+    t_0 = hyperparameters_config.getint('T_0')
+    t_mult = hyperparameters_config.getint('TMult')
+
 
     config = Config(set_seed, seed, embeddings_path, window_size, embedding_dim,
                     input_dim,  hidden_dim, n_layers, bidirectional, dropout_rate,
-                    learning_rate, n_epochs, batch_size)
+                    learning_rate, n_epochs, batch_size, t_0, t_mult)
 
     return config
 
-def train(model: Amaterasu, optimizer, criterion, loader, start_time, epoch, n_epochs, batch_length):
+def train_single_epoch(model: Amaterasu, optimizer, criterion, scheduler, loader, start_time, epoch, n_epochs, batch_length):
     epoch_loss = 0
     epoch_accuracy = 0
 
@@ -65,15 +68,16 @@ def train(model: Amaterasu, optimizer, criterion, loader, start_time, epoch, n_e
         loss.backward()
 
         optimizer.step()
+        #scheduler.step()
 
         epoch_loss += loss.item()
         epoch_accuracy += accuracy
 
-        logger.info(f"Epoch {epoch} - Minibatch {i + 1}: Loss {epoch_loss / (i + 1)} - Accuracy {epoch_accuracy / (i + 1)}")
+        logger.info(f"Epoch {epoch} - Minibatch {i + 1}: Loss {epoch_loss / (i + 1)} - Accuracy {epoch_accuracy / (i + 1)} (Learning rate {optimizer.param_groups[0]['lr']})")
 
     return epoch_loss / len(loader), epoch_accuracy / len(loader)
 
-def evaluate(model, criterion, loader, start_time, epoch, n_epochs, batch_length):
+def evaluate_single_epoch(model, criterion, loader, start_time, epoch, n_epochs, batch_length):
     epoch_loss = 0
     epoch_accuracy = 0
 
@@ -133,17 +137,18 @@ def reset_model(model: Amaterasu):
 
 def begin_training():
     Path('data/logs').mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename='data/logs/trainlogs_20241108.log', level=logging.INFO)
-
+    logging.basicConfig(filename='data/logs/trainlogs_20241109.log', level=logging.INFO)
 
     config = read_config()
 
     corpora, ngram_embeddings, (train_loader, validate_loader, test_loader) = preprocess_data(config)
-    model, optimizer, criterion = setup_model(config, corpora[0])
+    model, optimizer, criterion, scheduler = setup_model(config, corpora[0])
 
     reset_model(model)
 
     best_validation_loss = float('inf')
+
+    print(f"Starting training on {config.device}")
 
     train_loss_values = []
     validation_loss_values = []
@@ -153,21 +158,22 @@ def begin_training():
         logger.info("Starting epoch {}".format(epoch + 1))
         start_time = time.time()
 
-        train_loss, train_accuracy = train(model,
-                                           optimizer,
-                                           criterion,
-                                           train_loader,
-                                           start_time,
-                                           epoch,
-                                           config.epochs,
-                                           len(train_loader) + len(validate_loader))
-        validation_loss, validation_accuracy = evaluate(model,
+        train_loss, train_accuracy = train_single_epoch(model,
+                                                        optimizer,
                                                         criterion,
-                                                        validate_loader,
+                                                        scheduler,
+                                                        train_loader,
                                                         start_time,
                                                         epoch,
                                                         config.epochs,
                                                         len(train_loader) + len(validate_loader))
+        validation_loss, validation_accuracy = evaluate_single_epoch(model,
+                                                                      criterion,
+                                                                     validate_loader,
+                                                                     start_time,
+                                                                     epoch,
+                                                                     config.epochs,
+                                                                     len(train_loader) + len(validate_loader))
 
         train_loss_values.append(train_loss)
         validation_loss_values.append(validation_loss)
@@ -187,3 +193,5 @@ def begin_training():
         print(f'\t Validation Loss: {validation_loss:.3f} |  Val. Acc: {validation_accuracy * 100:.2f}%')
 
 begin_training()
+
+# Current best acc = 84.75% with no scheduler

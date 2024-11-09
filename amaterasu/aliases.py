@@ -3,8 +3,8 @@ from enum import Enum, IntEnum
 
 import torch
 
-type Corpus = list[dict[str, list[str]]]
-type NGramEmbeddings = dict[str, list[float]]
+#type Corpus = list[dict[str, list[str]]]
+#type NGramEmbeddings = dict[str, list[float]]
 
 class CharacterType(IntEnum):
     HIRAGANA = 0,
@@ -31,5 +31,8 @@ class Config:
     learning_rate: float
     epochs: int
     batch_size: int
+
+    t_0: int
+    t_mult: int
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

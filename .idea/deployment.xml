@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="ubuntu@104.171.202.232:22 key">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ubuntu/amaterasu-texas" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ubuntu@104.171.202.232:22 key (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ubuntu/amaterasu-texas" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ubuntu@104.171.202.232:22 key (3)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ubuntu/amaterasu-texas" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ubuntu@104.171.202.232:22 key (4)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ubuntu/amaterasu-texas" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ubuntu@104.171.203.132:22 key">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ubuntu/amaterasu-texas" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ubuntu@132.145.143.115:22 key">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/pycharm_project_800" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
