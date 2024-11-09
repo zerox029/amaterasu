@@ -4,3 +4,4 @@ setuptools~=69.5.1
 nltk~=3.8.1
 blingfire~=0.1.8
 bcolz-zipline~=1.2.12
+ray~=2.38.0
