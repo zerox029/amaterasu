@@ -68,7 +68,6 @@ def train_single_epoch(model: Amaterasu, optimizer, criterion, scheduler, loader
         loss.backward()
 
         optimizer.step()
-        #scheduler.step()
 
         epoch_loss += loss.item()
         epoch_accuracy += accuracy
@@ -137,7 +136,7 @@ def reset_model(model: Amaterasu):
 
 def begin_training():
     Path('data/logs').mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename='data/logs/trainlogs_20241109.log', level=logging.INFO)
+    logging.basicConfig(filename='data/logs/trainlogs_20241110.log', level=logging.INFO)
 
     config = read_config()
 
@@ -174,6 +173,8 @@ def begin_training():
                                                                      epoch,
                                                                      config.epochs,
                                                                      len(train_loader) + len(validate_loader))
+
+        scheduler.step(validation_loss)
 
         train_loss_values.append(train_loss)
         validation_loss_values.append(validation_loss)

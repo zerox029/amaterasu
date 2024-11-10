@@ -9,3 +9,8 @@ To run Amaterasu, you will first need to generate embeddings for n-grams of size
 1 through 5. To do so, please refer to the SCNE submodule present in `embeddings/`.
 They can be trained on any corpus but if you wish to train them on Wikipedia like I did,
 a submodule to do so easily is also present.
+
+## Todo
+- [ ] Implement CRF layer
+- [ ] Normalize sentence size within mini-batches so batches contain sentences of similar length
+- [ ] Add support for external corpus

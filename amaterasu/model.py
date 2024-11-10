@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from amaterasu.aliases import Config
 
@@ -60,7 +61,8 @@ def setup_model(config: Config, corpus) -> tuple[Amaterasu, optim.AdamW, nn.Cros
                       config.dropout).to(config.device)
     optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
     criterion = nn.CrossEntropyLoss(weight=compute_class_weights(config.device, corpus)).to(config.device)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=0.0001)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=0.0001)
+    scheduler = ReduceLROnPlateau(optimizer, "min")
 
     print(f'The model has {count_parameters(model):,} learnable parameters')
 
