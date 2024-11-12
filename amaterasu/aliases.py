@@ -2,9 +2,16 @@
 from enum import Enum, IntEnum
 
 import torch
+from torch.utils.data import DataLoader
 
-#type Corpus = list[dict[str, list[str]]]
-#type NGramEmbeddings = dict[str, list[float]]
+type Corpus = list[dict[str, list[str]]]
+type NGramEmbeddings = dict[str, list[float]]
+type TrainValidateTest = tuple[DataLoader, DataLoader, DataLoader]
+
+class CorpusOrigin(Enum):
+    JEITA = 0,
+    KNBC = 1,
+    OTHER = 2,
 
 class CharacterType(IntEnum):
     HIRAGANA = 0,

@@ -10,6 +10,10 @@ To run Amaterasu, you will first need to generate embeddings for n-grams of size
 They can be trained on any corpus but if you wish to train them on Wikipedia like I did,
 a submodule to do so easily is also present.
 
+## Requirements
+- Python 3.12 or higher
+- NGram embeddings (refer above)
+
 ## Todo
 - [ ] Implement CRF layer
 - [ ] Normalize sentence size within mini-batches so batches contain sentences of similar length

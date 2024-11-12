@@ -1,8 +1,5 @@
-﻿import time
-
-import torch
+﻿import torch
 from torch import float32
-from torch.nn.functional import batch_norm
 from torch.utils.data import random_split, DataLoader
 
 import bcolz
@@ -15,63 +12,33 @@ from numpy import ndarray
 
 import random
 import re
-from decimal import Decimal
 from pathlib import Path
 
-from aliases import CharacterType, Config
+from aliases import CharacterType, Config, Corpus, NGramEmbeddings, TrainValidateTest
+from amaterasu.aliases import CorpusOrigin
 
 PAD_TOKEN: str = "<pad>"
 
-class NGram:
-    def __init__(self, n: int, characters: list[str], dimensionality: int, embeddings):
-        self.n: int = n
-        self.characters: list[str] = characters
-        self.embedding: ndarray = self._get_embedding(dimensionality, embeddings)
-
-    def _get_embedding(self, dimensionality: int, ngram_embeddings) -> ndarray:
-        ngram_str: str = ''.join(self.characters)
-
-        ngram_embedding: ndarray = np.zeros(dimensionality)
-        if ngram_str in ngram_embeddings:
-            ngram_embedding: ndarray = np.array([Decimal(x) for x in ngram_embeddings[ngram_str]])
-
-        return ngram_embedding
-
-
-class CharacterVector:
-    def __init__(self, unigram: NGram, bigram: NGram, trigram: NGram):
-        self.unigram: NGram = unigram
-        self.bigram: NGram = bigram
-        self.trigram: NGram = trigram
-        self.characters: tuple[str] = self.trigram.characters
-        self.embedding = self._get_embeddings()
-
-    def _get_embeddings(self) -> ndarray:
-        character_type_embeddings: ndarray = np.zeros(len(self.characters) * len(CharacterType))
-        for i, character in enumerate(self.characters):
-            character_type_embeddings[get_character_type(character).value + (len(CharacterType) * i)] = 1
-
-        return np.concatenate((self.unigram.embedding,
-                               self.bigram.embedding,
-                               self.trigram.embedding,
-                               character_type_embeddings))
-
-
-def setup_corpora():
+def setup_corpora(corpus_origin: CorpusOrigin) -> Corpus:
     """
     Sets up KNBC and JEITA corpora to be used by the model
     """
 
-    nltk.download('knbc')
-    # nltk.download('jeita')
+    if corpus_origin == CorpusOrigin.KNBC:
+        nltk.download('knbc')
+        knbc = nltk.corpus.knbc.sents()
 
-    knbc = nltk.corpus.knbc.sents()
-    # jeita = nltk.corpus.jeita.sents()
+        return _setup_corpus(knbc)
 
-    return _setup_corpus(knbc), _setup_corpus(knbc)
+    elif corpus_origin == CorpusOrigin.JEITA:
+        nltk.download('jeita')
+        jeita = nltk.corpus.jeita.sents()
 
+        return _setup_corpus(jeita)
+    else:
+        raise NotImplemented
 
-def _setup_corpus(raw_corpus):
+def _setup_corpus(raw_corpus) -> Corpus:
     """Sets up a single corpus to be used by the model"""
 
     tagged_corpus = []
@@ -96,7 +63,7 @@ def _setup_corpus(raw_corpus):
     return tagged_corpus
 
 
-def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int):
+def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int) -> NGramEmbeddings:
     """Loads ngram embeddings from the given embeddings file and returns them in a dict."""
 
     tmp_dir = "data/tmp"
@@ -117,8 +84,8 @@ def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int):
                 if len(line) != embedding_dimension + 1:
                     continue
 
-                if idx % 10000 == 0:
-                    print(f"loaded embedding {idx}")
+                if idx % 100000 == 0:
+                    print(f"\rloaded {idx} embeddings", end="")
 
                 word: str = line[0]
                 ngrams.append(word)
@@ -132,6 +99,8 @@ def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int):
         vectors.flush()
         pickle.dump(ngrams, open(f'{tmp_dir}/{embedding_dimension}D.pkl', 'wb'))
         pickle.dump(ngram2idx, open(f'{tmp_dir}/{embedding_dimension}D_idx.pkl', 'wb'))
+
+        print()
 
     vectors: ndarray = bcolz.open(f'{tmp_dir}/{embedding_dimension}D.dat')[:]
     ngrams = pickle.load(open(f'{tmp_dir}/{embedding_dimension}D.pkl', 'rb'))
@@ -157,12 +126,11 @@ def get_character_type(char: str) -> CharacterType:
         return CharacterType.OTHER
 
 
-def create_loaders(corpus, config: Config, ngram_embeddings) -> tuple[DataLoader, DataLoader, DataLoader]:
+def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbeddings) -> TrainValidateTest:
     def collate_fn(batch):
         max_sentence_length = max([len(sentence['characters']) for sentence in batch])
         batch_inputs = torch.zeros(size=(len(batch), max_sentence_length, config.input_dim)).to(config.device)
         batch_labels = torch.zeros(size=(len(batch), max_sentence_length, config.output_dim)).to(config.device)
-        start_time = time.time()
 
         pad_embedding = np.zeros(config.embedding_dim)
         label_list = [PAD_TOKEN, 'S', 'B', 'E', 'I']
@@ -202,7 +170,6 @@ def create_loaders(corpus, config: Config, ngram_embeddings) -> tuple[DataLoader
                                                                      character_type_embeddings.clone().detach()), dim=0)
                 batch_labels[sentence_id][character_id] = label_embedding.clone().detach()
 
-        # print(f"collatefn took {(time.time() - start_time)}")
         return batch_inputs, batch_labels
 
     train_data, valid_data, test_data = random_split(corpus, [0.8, 0.1, 0.1])
@@ -214,7 +181,7 @@ def create_loaders(corpus, config: Config, ngram_embeddings) -> tuple[DataLoader
 
     return train_loader, validate_loader, test_loader
 
-def preprocess_data(config):
+def preprocess_data(config) -> tuple[Corpus, NGramEmbeddings, TrainValidateTest]:
     if config.set_seed:
         random.seed(config.seed)
         np.random.seed(config.seed)
@@ -222,8 +189,8 @@ def preprocess_data(config):
         torch.cuda.manual_seed(config.seed)
         torch.backends.cudnn.deterministic = True
 
-    knbc, jeita = setup_corpora()
+    corpus = setup_corpora(CorpusOrigin.KNBC)
     ngram_embeddings = load_ngram_embeddings(config.embeddings_path, config.embedding_dim)
-    loaders = create_loaders(knbc, config, ngram_embeddings)
+    loaders = create_loaders(corpus, config, ngram_embeddings)
 
-    return (knbc, jeita), ngram_embeddings, loaders
+    return corpus, ngram_embeddings, loaders

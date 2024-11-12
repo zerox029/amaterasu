@@ -1,5 +1,6 @@
 ﻿import configparser
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import math
@@ -47,7 +48,7 @@ def read_config() -> Config:
 
     return config
 
-def train_single_epoch(model: Amaterasu, optimizer, criterion, scheduler, loader, start_time, epoch, n_epochs, batch_length):
+def train_single_epoch(model: Amaterasu, optimizer, criterion, loader, start_time, epoch, n_epochs, batch_length):
     epoch_loss = 0
     epoch_accuracy = 0
 
@@ -134,14 +135,15 @@ def reset_model(model: Amaterasu):
         if hasattr(layer, 'reset_parameters'):
             layer.reset_parameters()
 
+# Current best acc = 86.75%
 def begin_training():
     Path('data/logs').mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename='data/logs/trainlogs_20241110.log', level=logging.INFO)
+    logging.basicConfig(filename=f'data/logs/trainlogs_{datetime.today().strftime('%Y%m%d')}.log', level=logging.INFO)
 
     config = read_config()
 
-    corpora, ngram_embeddings, (train_loader, validate_loader, test_loader) = preprocess_data(config)
-    model, optimizer, criterion, scheduler = setup_model(config, corpora[0])
+    corpus, ngram_embeddings, (train_loader, validate_loader, test_loader) = preprocess_data(config)
+    model, optimizer, criterion, scheduler = setup_model(config, corpus)
 
     reset_model(model)
 
@@ -160,7 +162,6 @@ def begin_training():
         train_loss, train_accuracy = train_single_epoch(model,
                                                         optimizer,
                                                         criterion,
-                                                        scheduler,
                                                         train_loader,
                                                         start_time,
                                                         epoch,
@@ -194,5 +195,3 @@ def begin_training():
         print(f'\t Validation Loss: {validation_loss:.3f} |  Val. Acc: {validation_accuracy * 100:.2f}%')
 
 begin_training()
-
-# Current best acc = 84.75% with no scheduler
