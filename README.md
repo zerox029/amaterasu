@@ -17,4 +17,4 @@ a submodule to do so easily is also present.
 ## Todo
 - [ ] Implement CRF layer
 - [x] Bucket batching
-- [ ] Add support for external corpus
+- [x] Add support for external corpus
