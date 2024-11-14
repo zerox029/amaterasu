@@ -12,7 +12,7 @@ a submodule to do so easily is also present.
 
 ## Requirements
 - Python 3.12 or higher
-- NGram embeddings (refer above)
+- NGram embeddings (refer to the above)
 
 ## Todo
 - [ ] Implement CRF layer
