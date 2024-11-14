@@ -24,6 +24,7 @@ def read_config() -> Config:
     set_seed = default_config.getboolean('SetSeed')
     seed = default_config.getint('Seed')
     embeddings_path = default_config.get('EmbeddingsPath')
+    custom_dataset_path = default_config.get('CustomDatasetPath')
     window_size = default_config.getint('WindowSize')
 
 
@@ -42,7 +43,7 @@ def read_config() -> Config:
     t_mult = hyperparameters_config.getint('TMult')
 
 
-    config = Config(set_seed, seed, embeddings_path, window_size, embedding_dim,
+    config = Config(set_seed, seed, embeddings_path, custom_dataset_path, window_size, embedding_dim,
                     input_dim,  hidden_dim, n_layers, bidirectional, dropout_rate,
                     learning_rate, n_epochs, batch_size, t_0, t_mult)
 
@@ -188,7 +189,7 @@ def begin_training():
 
         if validation_loss < best_validation_loss:
             best_validation_loss = validation_loss
-            torch.save(model.state_dict(), 'model.pt')
+            torch.save(model.state_dict(), 'in_progress.pt')
 
         print(f'\rEpoch: {epoch+1:02}/{config.epochs} | Epoch Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_accuracy * 100:.2f}%')

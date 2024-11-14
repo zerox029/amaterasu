@@ -19,11 +19,10 @@ from amaterasu.aliases import CorpusOrigin
 
 PAD_TOKEN: str = "<pad>"
 
-def setup_corpora(corpus_origin: CorpusOrigin) -> Corpus:
+def setup_corpora(corpus_origin: CorpusOrigin, corpus_path=None) -> Corpus:
     """
     Sets up KNBC and JEITA corpora to be used by the model
     """
-
     if corpus_origin == CorpusOrigin.KNBC:
         nltk.download('knbc')
         knbc = nltk.corpus.knbc.sents()
@@ -35,16 +34,32 @@ def setup_corpora(corpus_origin: CorpusOrigin) -> Corpus:
         jeita = nltk.corpus.jeita.sents()
 
         return _setup_corpus(jeita)
+
     else:
-        raise NotImplemented
+        # Read from a custom corpus, the expected file format is one sentence per line, tokenized with spaces
+        if corpus_path is None:
+            raise ValueError("corpus_path must be set when using a custom corpus origin")
+
+        with open(corpus_path, 'r', encoding='utf-8') as f:
+            corpus = [line.strip().split() for line in f]
+
+            return _setup_corpus(corpus)
+
 
 def _setup_corpus(raw_corpus) -> Corpus:
     """Sets up a single corpus to be used by the model"""
 
+    # unsorted = 70.62  sorted = 71.00 @ epoch 1
+    # unsorted = xx.xx  sorted = 83.70 @ epoch 20
+    # unsorted hovers around 85%
+    # still unsure if bucket batching should be kept or not,
+    # using it seems to result in slightly slower convergence but with lower variance
+    sorted_corpus = sorted(raw_corpus, key=len)
+
     tagged_corpus = []
 
-    for sentence in raw_corpus:
-        tagged_sentence: dict[str, list[str]] = {'characters': [], 'labels': []}
+    for sentence in sorted_corpus:
+        tagged_sentence = {'characters': [], 'labels': []}
 
         for word in sentence:
             for position, char in enumerate(word):
@@ -178,7 +193,6 @@ def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbedd
     validate_loader = DataLoader(valid_data, batch_size=config.batch_size, collate_fn=collate_fn)
     test_loader = DataLoader(test_data, batch_size=config.batch_size, collate_fn=collate_fn)
 
-
     return train_loader, validate_loader, test_loader
 
 def preprocess_data(config) -> tuple[Corpus, NGramEmbeddings, TrainValidateTest]:
@@ -189,7 +203,7 @@ def preprocess_data(config) -> tuple[Corpus, NGramEmbeddings, TrainValidateTest]
         torch.cuda.manual_seed(config.seed)
         torch.backends.cudnn.deterministic = True
 
-    corpus = setup_corpora(CorpusOrigin.KNBC)
+    corpus = setup_corpora(CorpusOrigin.OTHER, corpus_path=config.custom_dataset_path)
     ngram_embeddings = load_ngram_embeddings(config.embeddings_path, config.embedding_dim)
     loaders = create_loaders(corpus, config, ngram_embeddings)
 

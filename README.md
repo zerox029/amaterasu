@@ -16,5 +16,5 @@ a submodule to do so easily is also present.
 
 ## Todo
 - [ ] Implement CRF layer
-- [ ] Normalize sentence size within mini-batches so batches contain sentences of similar length
+- [x] Bucket batching
 - [ ] Add support for external corpus

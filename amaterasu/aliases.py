@@ -26,6 +26,7 @@ class Config:
     set_seed: bool
     seed: int
     embeddings_path: str
+    custom_dataset_path: str
     window_size: int
 
     embedding_dim: int
