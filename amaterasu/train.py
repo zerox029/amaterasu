@@ -54,6 +54,7 @@ def train_single_epoch(model: Amaterasu, optimizer, criterion, loader, start_tim
         display_epoch_status(i, batch_length, start_time, epoch, n_epochs, "training")
         optimizer.zero_grad()
 
+        print(sentence.shape)
         predictions = model(sentence)
 
         predictions = predictions.view(-1, predictions.shape[-1])
@@ -191,4 +192,5 @@ def begin_training(resume_previous_training: bool = False):
         print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_accuracy * 100:.2f}%')
         print(f'\t Validation Loss: {validation_loss:.3f} |  Val. Acc: {validation_accuracy * 100:.2f}%')
 
-begin_training()
+if __name__ == '__main__':
+    begin_training()

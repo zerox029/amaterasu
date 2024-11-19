@@ -1,5 +1,5 @@
 ﻿import torch
-from torch import float32
+from torch import float32, Tensor
 from torch.utils.data import random_split, DataLoader
 
 import bcolz
@@ -18,6 +18,7 @@ from aliases import CharacterType, Config, Corpus, NGramEmbeddings, TrainValidat
 from amaterasu.aliases import CorpusOrigin
 
 PAD_TOKEN: str = "<pad>"
+LABEL_LIST = [PAD_TOKEN, 'S', 'B', 'E', 'I']
 
 def setup_corpora(corpus_origin: CorpusOrigin, corpus_path=None) -> Corpus:
     """
@@ -140,6 +141,36 @@ def get_character_type(char: str) -> CharacterType:
     else:
         return CharacterType.OTHER
 
+def sentence_to_vectors(config: Config, ngram_embeddings: NGramEmbeddings, sentence: str) -> Tensor:
+    inputs = torch.zeros((len(sentence), config.input_dim)).to(config.device)
+    pad_embedding = np.zeros(config.embedding_dim)
+
+    for i, character in enumerate(sentence):
+        ngram_characters = sentence[i:i + config.window_size]
+
+        character_1 = ngram_characters[0] if len(ngram_characters) > 0 else PAD_TOKEN
+        character_2 = ngram_characters[1] if len(ngram_characters) > 1 else PAD_TOKEN
+        character_3 = ngram_characters[2] if len(ngram_characters) > 2 else PAD_TOKEN
+
+        character_type_1 = get_character_type(character_1)
+        character_type_2 = get_character_type(character_2)
+        character_type_3 = get_character_type(character_3)
+
+        unigram_embedding = torch.tensor(ngram_embeddings.get(character_1, pad_embedding), dtype=float32).to(config.device)
+        bigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2, pad_embedding), dtype=float32).to(config.device)
+        trigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2 + character_3, pad_embedding), dtype=float32).to(config.device)
+
+        character_type_embeddings = torch.zeros(size=(config.window_size * len(CharacterType),)).to(config.device)
+        character_type_embeddings[character_type_1.value + (len(CharacterType) * 0)] = 1
+        character_type_embeddings[character_type_2.value + (len(CharacterType) * 1)] = 1
+        character_type_embeddings[character_type_3.value + (len(CharacterType) * 1)] = 2
+
+        inputs[i] = torch.cat((unigram_embedding.clone().detach(),
+                                        bigram_embedding.clone().detach(),
+                                        trigram_embedding.clone().detach(),
+                                        character_type_embeddings.clone().detach()), dim=0)
+
+    return inputs
 
 def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbeddings) -> TrainValidateTest:
     def collate_fn(batch):
@@ -148,7 +179,6 @@ def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbedd
         batch_labels = torch.zeros(size=(len(batch), max_sentence_length, config.output_dim)).to(config.device)
 
         pad_embedding = np.zeros(config.embedding_dim)
-        label_list = [PAD_TOKEN, 'S', 'B', 'E', 'I']
 
         for sentence_id, sentence in enumerate(batch):
             characters = sentence['characters']
@@ -177,7 +207,7 @@ def create_loaders(corpus: Corpus, config: Config, ngram_embeddings: NGramEmbedd
                 character_type_embeddings[character_type_3.value + (len(CharacterType) * 1)] = 2
 
                 label_embedding = torch.zeros(config.output_dim)
-                label_embedding[label_list.index(label)] = 1
+                label_embedding[LABEL_LIST.index(label)] = 1
 
                 batch_inputs[sentence_id][character_id] = torch.cat((unigram_embedding.clone().detach(),
                                                                      bigram_embedding.clone().detach(),

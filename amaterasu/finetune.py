@@ -1,7 +1,7 @@
 ﻿# TODO: Use raytune
 from amaterasu.model import setup_model
 from amaterasu.preprocessing import preprocess_data
-from amaterasu.train import read_config, reset_model
+from amaterasu.train import read_config
 
 
 def finetune():

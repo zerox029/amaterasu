@@ -65,3 +65,9 @@ def setup_model(config: Config, corpus: Corpus) -> tuple[Amaterasu, optim.AdamW,
     print(f'The model has {model.count_parameters():,} learnable parameters')
 
     return model, optimizer, criterion, scheduler
+
+def setup_prod_model(config: Config) -> Amaterasu:
+    model = Amaterasu(config).to(config.device)
+    model.load_state_dict(torch.load("data/model.pt", weights_only=True))
+
+    return model
