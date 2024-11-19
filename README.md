@@ -18,3 +18,5 @@ a submodule to do so easily is also present.
 - [ ] Implement CRF layer
 - [x] Bucket batching
 - [x] Add support for external corpus
+- [ ] Experiment with moving target character to different places within the ngram
+- 

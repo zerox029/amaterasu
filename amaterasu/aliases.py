@@ -40,7 +40,4 @@ class Config:
     epochs: int
     batch_size: int
 
-    t_0: int
-    t_mult: int
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

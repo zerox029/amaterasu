@@ -54,11 +54,11 @@ def _setup_corpus(raw_corpus) -> Corpus:
     # unsorted hovers around 85%
     # still unsure if bucket batching should be kept or not,
     # using it seems to result in slightly slower convergence but with lower variance
-    sorted_corpus = sorted(raw_corpus, key=len)
+    # sorted_corpus = sorted(raw_corpus, key=len)
 
     tagged_corpus = []
 
-    for sentence in sorted_corpus:
+    for sentence in raw_corpus:
         tagged_sentence = {'characters': [], 'labels': []}
 
         for word in sentence:

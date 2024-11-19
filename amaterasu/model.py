@@ -54,15 +54,14 @@ def compute_class_weights(device: torch.device, corpus) -> torch.Tensor:
 
     return class_weights
 
-def count_parameters(model):
-  return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
 def setup_model(config: Config, corpus: Corpus) -> tuple[Amaterasu, optim.AdamW, nn.CrossEntropyLoss, optim.lr_scheduler.ReduceLROnPlateau]:
     model = Amaterasu(config).to(config.device)
+    model.initialize_weights()
+
     optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
     criterion = nn.CrossEntropyLoss(weight=compute_class_weights(config.device, corpus)).to(config.device)
     scheduler = ReduceLROnPlateau(optimizer, "min")
 
-    print(f'The model has {count_parameters(model):,} learnable parameters')
+    print(f'The model has {model.count_parameters():,} learnable parameters')
 
     return model, optimizer, criterion, scheduler

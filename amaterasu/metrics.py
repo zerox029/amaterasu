@@ -7,6 +7,7 @@ def categorical_accuracy(predictions, labels) -> float:
 
 def f1(predictions, labels) -> float:
     true_positives = true_positive_count(predictions, labels)
+    return 0.0
 
 def true_positive_count(predictions, labels) -> int:
     """Get the number of true positive predictions from a list of predicted and actual classes"""

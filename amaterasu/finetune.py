@@ -1,16 +1,15 @@
-﻿from amaterasu.model import setup_model
+﻿# TODO: Use raytune
+from amaterasu.model import setup_model
 from amaterasu.preprocessing import preprocess_data
 from amaterasu.train import read_config, reset_model
 
-# TODO: Use raytune
+
 def finetune():
     """Attempts to find the best hyperparameters for the model"""
     config = read_config()
 
     corpora, ngram_embeddings, (train_loader, validate_loader, test_loader) = preprocess_data(config)
     model, optimizer, criterion, scheduler = setup_model(config, corpora[0])
-
-    reset_model(model)
 
     parameters_ranges = {
         "dropout": (0.2, 0.5),

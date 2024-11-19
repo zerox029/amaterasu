@@ -27,7 +27,6 @@ def read_config() -> Config:
     custom_dataset_path = default_config.get('CustomDatasetPath')
     window_size = default_config.getint('WindowSize')
 
-
     hyperparameters_config = config['HYPERPARAMETERS']
     embedding_dim = hyperparameters_config.getint('EmbeddingDim')
     input_dim = embedding_dim * window_size + 6 * window_size
@@ -39,13 +38,9 @@ def read_config() -> Config:
     n_epochs = hyperparameters_config.getint('NEpochs')
     batch_size = hyperparameters_config.getint('BatchSize')
 
-    t_0 = hyperparameters_config.getint('T_0')
-    t_mult = hyperparameters_config.getint('TMult')
-
-
     config = Config(set_seed, seed, embeddings_path, custom_dataset_path, window_size, embedding_dim,
                     input_dim,  hidden_dim, n_layers, bidirectional, dropout_rate,
-                    learning_rate, n_epochs, batch_size, t_0, t_mult)
+                    learning_rate, n_epochs, batch_size)
 
     return config
 
@@ -137,7 +132,7 @@ def reset_model(model: Amaterasu):
             layer.reset_parameters()
 
 # Current best acc = 86.75%
-def begin_training():
+def begin_training(resume_previous_training: bool = False):
     Path('data/logs').mkdir(parents=True, exist_ok=True)
     logging.basicConfig(filename=f'data/logs/trainlogs_{datetime.today().strftime('%Y%m%d')}.log', level=logging.INFO)
 
@@ -146,7 +141,8 @@ def begin_training():
     corpus, ngram_embeddings, (train_loader, validate_loader, test_loader) = preprocess_data(config)
     model, optimizer, criterion, scheduler = setup_model(config, corpus)
 
-    reset_model(model)
+    if resume_previous_training:
+        model.load_state_dict(torch.load("in_progress.pt"))
 
     best_validation_loss = float('inf')
 
