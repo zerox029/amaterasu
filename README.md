@@ -19,4 +19,4 @@ a submodule to do so easily is also present.
 - [x] Bucket batching
 - [x] Add support for external corpus
 - [ ] Experiment with moving target character to different places within the ngram
-- 
+- [ ] Setup a pytorch embedding layer instead of using an external lookup table 
