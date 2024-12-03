@@ -5,6 +5,7 @@ from amaterasu.model import setup_prod_model
 from amaterasu.preprocessing import load_ngram_embeddings, sentence_to_vectors, LABEL_LIST
 from amaterasu.train import read_config
 
+import MeCab
 
 def preprocess_data(config: Config, sentences: list[str]):
     ngram_embeddings = load_ngram_embeddings(config.embeddings_path, config.embedding_dim)
@@ -41,4 +42,4 @@ def tokenize(sentences: list[str]):
     print(resolve_morpheme_boundaries(sentences[0], predictions))
 
 if __name__ == "__main__":
-    tokenize(["卓越した計画です"])
+    tokenize(["日本語の文書を分割してみましょう"])

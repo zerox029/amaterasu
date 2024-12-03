@@ -54,7 +54,6 @@ def train_single_epoch(model: Amaterasu, optimizer, criterion, loader, start_tim
         display_epoch_status(i, batch_length, start_time, epoch, n_epochs, "training")
         optimizer.zero_grad()
 
-        print(sentence.shape)
         predictions = model(sentence)
 
         predictions = predictions.view(-1, predictions.shape[-1])
@@ -132,7 +131,6 @@ def reset_model(model: Amaterasu):
         if hasattr(layer, 'reset_parameters'):
             layer.reset_parameters()
 
-# Current best acc = 86.75%
 def begin_training(resume_previous_training: bool = False):
     Path('data/logs').mkdir(parents=True, exist_ok=True)
     logging.basicConfig(filename=f'data/logs/trainlogs_{datetime.today().strftime('%Y%m%d')}.log', level=logging.INFO)
@@ -143,7 +141,7 @@ def begin_training(resume_previous_training: bool = False):
     model, optimizer, criterion, scheduler = setup_model(config, corpus)
 
     if resume_previous_training:
-        model.load_state_dict(torch.load("in_progress.pt"))
+        model.load_state_dict(torch.load("data/model.pt"))
 
     best_validation_loss = float('inf')
 
@@ -166,7 +164,7 @@ def begin_training(resume_previous_training: bool = False):
                                                         config.epochs,
                                                         len(train_loader) + len(validate_loader))
         validation_loss, validation_accuracy = evaluate_single_epoch(model,
-                                                                      criterion,
+                                                                     criterion,
                                                                      validate_loader,
                                                                      start_time,
                                                                      epoch,

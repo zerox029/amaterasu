@@ -122,8 +122,10 @@ def load_ngram_embeddings(embeddings_path: str, embedding_dimension: int) -> NGr
     ngrams = pickle.load(open(f'{tmp_dir}/{embedding_dimension}D.pkl', 'rb'))
     ngram2idx = pickle.load(open(f'{tmp_dir}/{embedding_dimension}D_idx.pkl', 'rb'))
 
-    return {n: vectors[ngram2idx[n]] for n in ngrams}
+    embeddings = {n: vectors[ngram2idx[n]] for n in ngrams}
+    embeddings[PAD_TOKEN] = np.zeros(embedding_dimension)
 
+    return embeddings
 
 def get_character_type(char: str) -> CharacterType:
     """Returns the matching character type for a given character"""
@@ -143,7 +145,7 @@ def get_character_type(char: str) -> CharacterType:
 
 def sentence_to_vectors(config: Config, ngram_embeddings: NGramEmbeddings, sentence: str) -> Tensor:
     inputs = torch.zeros((len(sentence), config.input_dim)).to(config.device)
-    pad_embedding = np.zeros(config.embedding_dim)
+    unk_embedding = np.zeros(config.embedding_dim)
 
     for i, character in enumerate(sentence):
         ngram_characters = sentence[i:i + config.window_size]
@@ -156,9 +158,9 @@ def sentence_to_vectors(config: Config, ngram_embeddings: NGramEmbeddings, sente
         character_type_2 = get_character_type(character_2)
         character_type_3 = get_character_type(character_3)
 
-        unigram_embedding = torch.tensor(ngram_embeddings.get(character_1, pad_embedding), dtype=float32).to(config.device)
-        bigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2, pad_embedding), dtype=float32).to(config.device)
-        trigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2 + character_3, pad_embedding), dtype=float32).to(config.device)
+        unigram_embedding = torch.tensor(ngram_embeddings.get(character_1, unk_embedding), dtype=float32).to(config.device)
+        bigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2, unk_embedding), dtype=float32).to(config.device)
+        trigram_embedding = torch.tensor(ngram_embeddings.get(character_1 + character_2 + character_3, unk_embedding), dtype=float32).to(config.device)
 
         character_type_embeddings = torch.zeros(size=(config.window_size * len(CharacterType),)).to(config.device)
         character_type_embeddings[character_type_1.value + (len(CharacterType) * 0)] = 1
