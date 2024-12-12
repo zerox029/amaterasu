@@ -6,13 +6,19 @@ Amaterasu is a japanese tokenizer based on an LSTM network. The model architectu
 
 ## Getting Started
 To run Amaterasu, you will first need to generate embeddings for n-grams of size
-1 through 5. To do so, please refer to the SCNE submodule present in `embeddings/`.
+1 through 5, this requirement is temporary and a change to the architecture to change that
+is intended. To do so, please refer to the SCNE submodule present in `embeddings/`.
 They can be trained on any corpus but if you wish to train them on Wikipedia like I did,
 a submodule to do so easily is also present.
 
 ## Requirements
 - Python 3.12 or higher
 - NGram embeddings (refer to the above)
+
+## Using Amaterasu
+1. Download the requirements with `pip install -r requirements.txt`
+2. Train the model by running `train.py`
+3. Test the model with `train.py` and adding `test` as a command line argument or use it on your own sentences by running `runner.py`
 
 ## Todo
 - [ ] Implement CRF layer
