@@ -17,7 +17,7 @@ a submodule to do so easily is also present.
 
 ## Using Amaterasu
 1. Download the requirements with `pip install -r requirements.txt`
-2. Train the model by running `train.py`
+2. (Optional) Train the model by running `train.py`
 3. Test the model with `train.py` and adding `test` as a command line argument or use it on your own sentences by running `runner.py`
 
 ## Todo
