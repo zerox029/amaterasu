@@ -12,14 +12,21 @@ is intended. To do so, please refer to the SCNE submodule present in `embeddings
 They can be trained on any corpus but if you wish to train them on Wikipedia like I did,
 a submodule to do so easily is also present.
 
+Alternatively, you can download them [here](https://drive.google.com/drive/folders/1aS3ZlnIMul5FMMwqfl4_W1ALxQzluEeU?usp=sharing).
+Make sure the `EmbeddingsPath` set in `config.ini` matches the path where your embeddings are stored.
+Two versions are available, one with 50 dimensional embeddings and another with 200 dimensional embeddings.
+If you wish to use the 50d version, you must set `EmbeddingDim` to 50 in `config.ini` and retrain Amaterasu. 
+No additional work should be needed to use the 200d version.
+
 ## Requirements
 - Python 3.12 or higher
 - NGram embeddings (refer to the above)
 
 ## Using Amaterasu
 1. Download the requirements with `pip install -r requirements.txt`
-2. (Optional) Train the model by running `train.py`
-3. Test the model with `train.py` and adding `test` as a command line argument or use it on your own sentences by running `runner.py`
+2. Pull the submodules with `git submodule update --init`
+3. (Optional) Train the model by running `train.py`
+4. Test the model with `train.py` and adding `test` as a command line argument or use it on your own sentences by running `runner.py`
 
 ## Todo
 - [ ] Implement CRF layer
@@ -27,4 +34,4 @@ a submodule to do so easily is also present.
 - [x] Add support for external corpus
 - [ ] Experiment with moving target character to different places within the ngram
 - [ ] Setup a pytorch embedding layer instead of using an external lookup table 
-  - [ ] Initialize a random embedding for unknown words instead of using zero vectors
+  - [x] Initialize a random embedding for unknown words instead of using zero vectors
